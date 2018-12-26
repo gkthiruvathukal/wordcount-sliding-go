@@ -1,4 +1,4 @@
-package slidingwordcount
+package main
 
 import "fmt"
 
