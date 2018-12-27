@@ -1,25 +1,21 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
-	"math/rand"
+	"os"
+	"regexp"
 	"sort"
-	"strconv"
 	"strings"
 )
 
+// WordCountConfig is used for CLI arguments
 type WordCountConfig struct {
-	uniqueWords, lastNWords, wordsToGenerate, showTop int
+	lastNWords, showTop, minWordLength int
 }
 
-func wordGenerator(wordBase string, uniqueWords int) func() string {
-	return func() string {
-		n := rand.Intn(uniqueWords)
-		return wordBase + strconv.Itoa(n)
-	}
-}
-
+// WC is used for sorting at presentation layer (top N words in word cloud)
 type WC struct {
 	word  string
 	count int
@@ -58,33 +54,39 @@ func showWordCounts(wc map[string]int, showTop int) {
 }
 
 func driver(config *WordCountConfig) {
-	nextWord := wordGenerator("unique", config.uniqueWords)
+	regex := regexp.MustCompile(`\w+`)
+	scanner := bufio.NewScanner(os.Stdin)
 	queue := new(CQueueString)
 	queue.init(config.lastNWords)
 	wc := make(map[string]int)
 
-	for i := 0; i < config.wordsToGenerate; i++ {
-		word := nextWord()
-		//queue.show()
-		if queue.isFull() {
-			_, droppedWord := queue.remove()
-			wc[droppedWord]--
-			if wc[droppedWord] <= 0 {
-				delete(wc, droppedWord)
+	for scanner.Scan() {
+		text := scanner.Text()
+		matches := regex.FindAllString(text, -1)
+		for _, word := range matches {
+			if len(word) < config.minWordLength {
+				continue
 			}
+			if queue.isFull() {
+				_, droppedWord := queue.remove()
+				wc[droppedWord]--
+				if wc[droppedWord] <= 0 {
+					delete(wc, droppedWord)
+				}
+			}
+			queue.add(word)
+			wc[word]++
+			showWordCounts(wc, config.showTop)
 		}
-		queue.add(word)
-		wc[word]++
-		showWordCounts(wc, config.showTop)
 	}
 }
 
 func main() {
-	config := WordCountConfig{}
-	flag.IntVar(&config.uniqueWords, "unique", config.uniqueWords, "number of unique words")
-	flag.IntVar(&config.lastNWords, "last_n_words", config.uniqueWords, "last n words from current word (to count in word cloud)")
-	flag.IntVar(&config.wordsToGenerate, "generate", config.wordsToGenerate, "words to generate randomly")
+	config := WordCountConfig{1000, 10, 5}
+
+	flag.IntVar(&config.lastNWords, "last_n_words", config.lastNWords, "last n words from current word (to count in word cloud)")
 	flag.IntVar(&config.showTop, "show_top", config.showTop, "show top n words")
+	flag.IntVar(&config.minWordLength, "min_word_length", config.minWordLength, "minimum word length")
 	flag.Parse()
 	driver(&config)
 }
