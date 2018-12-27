@@ -12,7 +12,7 @@ import (
 
 // WordCountConfig is used for CLI arguments
 type WordCountConfig struct {
-	lastNWords, showTop, minWordLength int
+	lastNWords, showTop, minWordLength, everySteps int
 }
 
 // WC is used for sorting at presentation layer (top N words in word cloud)
@@ -59,6 +59,7 @@ func driver(config *WordCountConfig) {
 	queue := new(CQueueString)
 	queue.init(config.lastNWords)
 	wc := make(map[string]int)
+	wordPosition := 0
 
 	for scanner.Scan() {
 		text := scanner.Text()
@@ -76,17 +77,22 @@ func driver(config *WordCountConfig) {
 			}
 			queue.add(word)
 			wc[word]++
-			showWordCounts(wc, config.showTop)
+			if (wordPosition+1)%config.everySteps == 0 {
+				fmt.Printf("%d: ", wordPosition+1)
+				showWordCounts(wc, config.showTop)
+			}
+			wordPosition++
 		}
 	}
 }
 
 func main() {
-	config := WordCountConfig{1000, 10, 5}
+	config := WordCountConfig{1000, 10, 5, 1000}
 
-	flag.IntVar(&config.lastNWords, "last_n_words", config.lastNWords, "last n words from current word (to count in word cloud)")
-	flag.IntVar(&config.showTop, "show_top", config.showTop, "show top n words")
-	flag.IntVar(&config.minWordLength, "min_word_length", config.minWordLength, "minimum word length")
+	flag.IntVar(&config.lastNWords, "last-n-words", config.lastNWords, "last n words from current word (to count in word cloud)")
+	flag.IntVar(&config.showTop, "show-top", config.showTop, "show top n words")
+	flag.IntVar(&config.minWordLength, "min-word-length", config.minWordLength, "minimum word length")
+	flag.IntVar(&config.everySteps, "every-steps", config.everySteps, "minimum word length")
 	flag.Parse()
 	driver(&config)
 }
