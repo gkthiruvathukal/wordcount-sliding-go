@@ -65,9 +65,6 @@ func driver(config *WordCountConfig) {
 		text := scanner.Text()
 		matches := regex.FindAllString(text, -1)
 		for _, word := range matches {
-			if len(word) < config.minWordLength {
-				continue
-			}
 			if queue.isFull() {
 				_, droppedWord := queue.remove()
 				wc[droppedWord]--
@@ -75,13 +72,16 @@ func driver(config *WordCountConfig) {
 					delete(wc, droppedWord)
 				}
 			}
+			wordPosition++
 			queue.add(word)
-			wc[word]++
-			if (wordPosition+1)%config.everySteps == 0 {
-				fmt.Printf("%d: ", wordPosition+1)
+			// the minimum word test applies to counting only, not to last N
+			if len(word) >= config.minWordLength {
+				wc[word]++
+			}
+			if wordPosition%config.everySteps == 0 {
+				fmt.Printf("%d: ", wordPosition)
 				showWordCounts(wc, config.showTop)
 			}
-			wordPosition++
 		}
 	}
 }
