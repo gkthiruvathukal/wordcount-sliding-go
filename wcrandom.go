@@ -13,6 +13,7 @@ import (
 // WordCountConfig is used for CLI arguments
 type WordCountConfig struct {
 	lastNWords, showTop, minWordLength, everySteps int
+	ignoreCase                                     bool
 }
 
 // WC is used for sorting at presentation layer (top N words in word cloud)
@@ -75,8 +76,12 @@ func driver(config *WordCountConfig) {
 			wordPosition++
 			queue.add(word)
 			// the minimum word test applies to counting only, not to last N
+			storeWord := word
+			if config.ignoreCase {
+				storeWord = strings.ToUpper(word)
+			}
 			if len(word) >= config.minWordLength {
-				wc[word]++
+				wc[storeWord]++
 			}
 			if wordPosition%config.everySteps == 0 {
 				fmt.Printf("%d: ", wordPosition)
@@ -87,12 +92,13 @@ func driver(config *WordCountConfig) {
 }
 
 func main() {
-	config := WordCountConfig{1000, 10, 5, 1000}
+	config := WordCountConfig{1000, 10, 5, 1000, false}
 
 	flag.IntVar(&config.lastNWords, "last-n-words", config.lastNWords, "last n words from current word (to count in word cloud)")
 	flag.IntVar(&config.showTop, "show-top", config.showTop, "show top n words")
 	flag.IntVar(&config.minWordLength, "min-word-length", config.minWordLength, "minimum word length")
 	flag.IntVar(&config.everySteps, "every-steps", config.everySteps, "minimum word length")
+	flag.BoolVar(&config.ignoreCase, "ignore-case", config.ignoreCase, "treat all words as upper case")
 	flag.Parse()
 	driver(&config)
 }
