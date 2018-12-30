@@ -54,6 +54,31 @@ func showWordCounts(wc map[string]int, showTop int) {
 	fmt.Printf("words { %s }\n", strings.Join(pretty, ", "))
 }
 
+func wordUp(wordCloud map[string]int, word string, config *WordCountConfig) {
+	if len(word) < config.minWordLength {
+		return
+	}
+	addWord := word
+	if config.ignoreCase {
+		addWord = strings.ToLower(addWord)
+	}
+	wordCloud[addWord]++
+}
+
+func wordDown(wordCloud map[string]int, word string, config *WordCountConfig) {
+	if len(word) < config.minWordLength {
+		return
+	}
+	dropWord := word
+	if config.ignoreCase {
+		dropWord = strings.ToLower(word)
+	}
+	wordCloud[dropWord]--
+	if wordCloud[dropWord] <= 0 {
+		delete(wordCloud, dropWord)
+	}
+}
+
 func driver(config *WordCountConfig) {
 	regex := regexp.MustCompile(`\w+`)
 	scanner := bufio.NewScanner(os.Stdin)
@@ -61,27 +86,19 @@ func driver(config *WordCountConfig) {
 	queue.init(config.lastNWords)
 	wc := make(map[string]int)
 	wordPosition := 0
-
 	for scanner.Scan() {
 		text := scanner.Text()
 		matches := regex.FindAllString(text, -1)
 		for _, word := range matches {
 			if queue.isFull() {
 				_, droppedWord := queue.remove()
-				wc[droppedWord]--
-				if wc[droppedWord] <= 0 {
-					delete(wc, droppedWord)
-				}
+				wordDown(wc, droppedWord, config)
 			}
 			wordPosition++
 			queue.add(word)
 			// the minimum word test applies to counting only, not to last N
-			storeWord := word
-			if config.ignoreCase {
-				storeWord = strings.ToUpper(word)
-			}
 			if len(word) >= config.minWordLength {
-				wc[storeWord]++
+				wordUp(wc, word, config)
 			}
 			if wordPosition%config.everySteps == 0 {
 				fmt.Printf("%d: ", wordPosition)
