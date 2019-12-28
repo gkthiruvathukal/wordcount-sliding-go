@@ -44,8 +44,18 @@ func (cq *CQueueString) remove() (int, string) {
 }
 
 func (cq *CQueueString) isFull() bool {
-	return len(cq.queue) == cq.count
+	return cq.count == len(cq.queue)
 }
+
 func (cq *CQueueString) isEmpty() bool {
-	return len(cq.queue) == 0
+        return cq.count == 0
 }
+
+func (cq *CQueueString) size() int{
+    return cq.count;
+}
+
+func (cq *CQueueString) length() int{
+    return len(cq.queue);
+}
+
