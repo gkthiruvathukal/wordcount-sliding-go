@@ -48,14 +48,13 @@ func (cq *CQueueString) isFull() bool {
 }
 
 func (cq *CQueueString) isEmpty() bool {
-        return cq.count == 0
+	return cq.count == 0
 }
 
-func (cq *CQueueString) size() int{
-    return cq.count;
+func (cq *CQueueString) size() int {
+	return cq.count
 }
 
-func (cq *CQueueString) length() int{
-    return len(cq.queue);
+func (cq *CQueueString) length() int {
+	return len(cq.queue)
 }
-
