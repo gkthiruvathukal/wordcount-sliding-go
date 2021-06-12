@@ -1,3 +1,3 @@
-module ssl.luc.edu/wc
+module ssl.luc.edu/wordcount-sliding-go
 
 go 1.16
