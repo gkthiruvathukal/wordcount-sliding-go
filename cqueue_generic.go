@@ -2,27 +2,27 @@ package main
 
 import "fmt"
 
-// CQueueString is a circular queue
+// CircularQueue[T] is a circular queue
 
-type CQueueString struct {
-	queue                 []string
+type CircularQueue[T comparable] struct {
+	queue                 []T
 	storePos, retrievePos int
 	count                 int
+	default_zero          T
 }
 
-func (cq *CQueueString) show() {
-        // replace with native logging
+func (cq *CircularQueue[T]) show() {
 	fmt.Printf("storePos = %d, retrievePos = %d, queue = ", cq.storePos, cq.retrievePos)
 	fmt.Println(cq.queue)
 }
 
-func (cq *CQueueString) init(size int) {
-	cq.queue = make([]string, size)
+func (cq *CircularQueue[T]) init(size int) {
+	cq.queue = make([]T, size)
 	cq.storePos = 0
 	cq.retrievePos = 0
 	cq.count = 0
 }
-func (cq *CQueueString) add(s string) int {
+func (cq *CircularQueue[T]) add(s T) int {
 	if cq.isFull() {
 		return -1
 	} else {
@@ -33,9 +33,9 @@ func (cq *CQueueString) add(s string) int {
 	}
 }
 
-func (cq *CQueueString) remove() (int, string) {
+func (cq *CircularQueue[T]) remove() (int, T) {
 	if cq.isEmpty() {
-		return -1, ""
+		return -1, cq.default_zero
 	} else {
 		item := cq.queue[cq.retrievePos]
 		cq.retrievePos = (cq.retrievePos + 1) % len(cq.queue)
@@ -44,18 +44,18 @@ func (cq *CQueueString) remove() (int, string) {
 	}
 }
 
-func (cq *CQueueString) isFull() bool {
+func (cq *CircularQueue[T]) isFull() bool {
 	return cq.count == len(cq.queue)
 }
 
-func (cq *CQueueString) isEmpty() bool {
+func (cq *CircularQueue[T]) isEmpty() bool {
 	return cq.count == 0
 }
 
-func (cq *CQueueString) size() int {
+func (cq *CircularQueue[T]) size() int {
 	return cq.count
 }
 
-func (cq *CQueueString) length() int {
+func (cq *CircularQueue[T]) length() int {
 	return len(cq.queue)
 }

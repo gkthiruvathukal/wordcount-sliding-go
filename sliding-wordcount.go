@@ -82,7 +82,7 @@ func wordDown(wordCloud map[string]int, word string, config *WordCountConfig) {
 func driver(config *WordCountConfig) {
 	regex := regexp.MustCompile(`\w+`)
 	scanner := bufio.NewScanner(os.Stdin)
-	queue := new(CQueueString)
+	queue := new(CircularQueue[string])
 	queue.init(config.lastNWords)
 	wc := make(map[string]int)
 	wordPosition := 0
