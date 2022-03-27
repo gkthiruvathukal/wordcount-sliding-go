@@ -1,6 +1,6 @@
 package main
 
-import "fmt"
+import "log"
 
 // CircularQueue[T] is a circular queue
 
@@ -12,8 +12,8 @@ type CircularQueue[T comparable] struct {
 }
 
 func (cq *CircularQueue[T]) show() {
-	fmt.Printf("storePos = %d, retrievePos = %d, queue = ", cq.storePos, cq.retrievePos)
-	fmt.Println(cq.queue)
+	log.Printf("storePos = %d, retrievePos = %d, queue = ", cq.storePos, cq.retrievePos)
+   log.Println(cq)
 }
 
 func (cq *CircularQueue[T]) init(size int) {
