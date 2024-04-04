@@ -54,25 +54,11 @@ func showWordCounts(wc map[string]int, showTop int) {
 	fmt.Printf("words { %s }\n", strings.Join(pretty, ", "))
 }
 
-func wordUp(wordCloud map[string]int, word string, config *WordCountConfig) {
-	if len(word) < config.minWordLength {
-		return
-	}
-	addWord := word
-	if config.ignoreCase {
-		addWord = strings.ToLower(addWord)
-	}
+func wordUp(wordCloud map[string]int, addWord string) {
 	wordCloud[addWord]++
 }
 
-func wordDown(wordCloud map[string]int, word string, config *WordCountConfig) {
-	if len(word) < config.minWordLength {
-		return
-	}
-	dropWord := word
-	if config.ignoreCase {
-		dropWord = strings.ToLower(word)
-	}
+func wordDown(wordCloud map[string]int, dropWord string) {
 	wordCloud[dropWord]--
 	if wordCloud[dropWord] <= 0 {
 		delete(wordCloud, dropWord)
@@ -80,7 +66,7 @@ func wordDown(wordCloud map[string]int, word string, config *WordCountConfig) {
 }
 
 func driver(config *WordCountConfig) {
-	regex := regexp.MustCompile(`\w+`)
+	regex := regexp.MustCompile(`\p{L}+`)
 	scanner := bufio.NewScanner(os.Stdin)
 	queue := new(CircularQueue[string])
 	queue.init(config.lastNWords)
@@ -90,19 +76,22 @@ func driver(config *WordCountConfig) {
 		text := scanner.Text()
 		matches := regex.FindAllString(text, -1)
 		for _, word := range matches {
-			if queue.isFull() {
-				_, droppedWord := queue.remove()
-				wordDown(wc, droppedWord, config)
-			}
-			wordPosition++
-			queue.add(word)
-			// the minimum word test applies to counting only, not to last N
+			// ignore words below the minimum length altogether
 			if len(word) >= config.minWordLength {
-				wordUp(wc, word, config)
-			}
-			if wordPosition%config.everySteps == 0 {
-				fmt.Printf("%d: ", wordPosition)
-				showWordCounts(wc, config.showTop)
+				if config.ignoreCase {
+					word = strings.ToLower(word)
+				}
+				wordUp(wc, word)
+				if queue.isFull() {
+					_, droppedWord := queue.remove()
+					wordDown(wc, droppedWord)
+				}
+				wordPosition++
+				queue.add(word)
+				if wordPosition%config.everySteps == 0 {
+					fmt.Printf("%d: ", wordPosition)
+					showWordCounts(wc, config.showTop)
+				}
 			}
 		}
 	}
