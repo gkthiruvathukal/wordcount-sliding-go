@@ -77,7 +77,7 @@ func driver(config *WordCountConfig) {
 		matches := regex.FindAllString(text, -1)
 		for _, word := range matches {
 			// ignore words below the minimum length altogether
-			if len(word) >= config.minWordLength {
+			if len([]rune(word)) >= config.minWordLength {
 				if config.ignoreCase {
 					word = strings.ToLower(word)
 				}
