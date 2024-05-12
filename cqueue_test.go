@@ -6,29 +6,27 @@ import (
 )
 
 func TestNew(t *testing.T) {
-	q := new(CircularQueue[string])
 	expected := 5
-	q.init(expected)
-	if !q.isEmpty() {
-		t.Errorf("CircularQueue[string] not empty (size is %d; length is %d).", q.size(), q.length())
+	q := NewCircularQueue[string](expected)
+	if !q.IsEmpty() {
+		t.Errorf("CircularQueue[string] not empty (size is %d; length is %d).", q.Size(), q.Length())
 	}
-	if q.length() != expected {
-		t.Errorf("CircularQueue[string] not %d (length is %d).", expected, q.length())
+	if q.Length() != expected {
+		t.Errorf("CircularQueue[string] not %d (length is %d).", expected, q.Length())
 	}
 }
 
 func TestFill(t *testing.T) {
-	q := new(CircularQueue[string])
 	expected := 5
-	q.init(expected)
+	q := NewCircularQueue[string](expected)
 	for i := 0; i < expected-1; i++ {
-		q.add(strconv.Itoa(i))
-		if q.isFull() {
-			t.Errorf("CircularQueue[string] should not be full yet (has %d elements, length %d).", q.size(), q.length())
+		q.Enqueue(strconv.Itoa(i))
+		if q.IsFull() {
+			t.Errorf("CircularQueue[string] should not be full yet (has %d elements, length %d).", q.Size(), q.Length())
 		}
 	}
-	q.add(strconv.Itoa(expected))
-	if !q.isFull() {
-		t.Errorf("CircularQueue[string] did not reach expected capacity %d (size is %d).", expected, q.size())
+	q.Enqueue(strconv.Itoa(expected))
+	if !q.IsFull() {
+		t.Errorf("CircularQueue[string] did not reach expected capacity %d (size is %d).", expected, q.Size())
 	}
 }

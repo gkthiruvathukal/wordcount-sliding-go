@@ -68,8 +68,8 @@ func wordDown(wordCloud map[string]int, dropWord string) {
 func driver(config *WordCountConfig) {
 	regex := regexp.MustCompile(`\p{L}+`)
 	scanner := bufio.NewScanner(os.Stdin)
-	queue := new(CircularQueue[string])
-	queue.init(config.lastNWords)
+	queue := NewCircularQueue[string](config.lastNWords)
+	//#queue.init(config.lastNWords)
 	wc := make(map[string]int)
 	wordPosition := 0
 	for scanner.Scan() {
@@ -82,12 +82,12 @@ func driver(config *WordCountConfig) {
 					word = strings.ToLower(word)
 				}
 				wordUp(wc, word)
-				if queue.isFull() {
-					_, droppedWord := queue.remove()
+				if queue.IsFull() {
+					droppedWord, _ := queue.Dequeue()
 					wordDown(wc, droppedWord)
 				}
 				wordPosition++
-				queue.add(word)
+				queue.Enqueue(word)
 				if wordPosition%config.everySteps == 0 {
 					fmt.Printf("%d: ", wordPosition)
 					showWordCounts(wc, config.showTop)

@@ -1,8 +1,9 @@
 package main
 
-import "log"
-
-// CircularQueue[T] is a circular queue
+import (
+	"errors"
+	"log"
+)
 
 type CircularQueue[T comparable] struct {
 	queue                 []T
@@ -11,51 +12,70 @@ type CircularQueue[T comparable] struct {
 	default_zero          T
 }
 
-func (cq *CircularQueue[T]) show() {
-	log.Printf("storePos = %d, retrievePos = %d, queue = ", cq.storePos, cq.retrievePos)
-   log.Println(cq)
+func NewCircularQueue[T comparable](size int) *CircularQueue[T] {
+	return &CircularQueue[T]{
+		queue: make([]T, size),
+	}
 }
 
-func (cq *CircularQueue[T]) init(size int) {
-	cq.queue = make([]T, size)
+func (cq *CircularQueue[T]) Show() {
+	log.Printf("storePos = %d, retrievePos = %d, queue = %v\n", cq.storePos, cq.retrievePos, cq.queue)
+}
+
+func (cq *CircularQueue[T]) Enqueue(s T) error {
+	if cq.IsFull() {
+		return errors.New("queue is full")
+	}
+	cq.queue[cq.storePos] = s
+	cq.storePos = (cq.storePos + 1) % len(cq.queue)
+	cq.count++
+	return nil
+}
+
+func (cq *CircularQueue[T]) Dequeue() (T, error) {
+	if cq.IsEmpty() {
+		return cq.default_zero, errors.New("queue is empty")
+	}
+	item := cq.queue[cq.retrievePos]
+	cq.queue[cq.retrievePos] = cq.default_zero
+	cq.retrievePos = (cq.retrievePos + 1) % len(cq.queue)
+	cq.count--
+	return item, nil
+}
+
+func (cq *CircularQueue[T]) Peek() (T, error) {
+	if cq.IsEmpty() {
+		return cq.default_zero, errors.New("queue is empty")
+	}
+	return cq.queue[cq.retrievePos], nil
+}
+
+func (cq *CircularQueue[T]) Clear() {
 	cq.storePos = 0
 	cq.retrievePos = 0
 	cq.count = 0
-}
-func (cq *CircularQueue[T]) add(s T) int {
-	if cq.isFull() {
-		return -1
-	} else {
-		cq.queue[cq.storePos] = s
-		cq.storePos = (cq.storePos + 1) % len(cq.queue)
-		cq.count++
-		return cq.count
+
+	for i := range cq.queue {
+		cq.queue[i] = cq.default_zero
 	}
 }
 
-func (cq *CircularQueue[T]) remove() (int, T) {
-	if cq.isEmpty() {
-		return -1, cq.default_zero
-	} else {
-		item := cq.queue[cq.retrievePos]
-		cq.retrievePos = (cq.retrievePos + 1) % len(cq.queue)
-		cq.count--
-		return cq.count, item
-	}
-}
-
-func (cq *CircularQueue[T]) isFull() bool {
+func (cq *CircularQueue[T]) IsFull() bool {
 	return cq.count == len(cq.queue)
 }
 
-func (cq *CircularQueue[T]) isEmpty() bool {
+func (cq *CircularQueue[T]) IsEmpty() bool {
 	return cq.count == 0
 }
 
-func (cq *CircularQueue[T]) size() int {
+func (cq *CircularQueue[T]) Size() int {
 	return cq.count
 }
 
-func (cq *CircularQueue[T]) length() int {
+func (cq *CircularQueue[T]) Capacity() int {
+	return len(cq.queue)
+}
+
+func (cq *CircularQueue[T]) Length() int {
 	return len(cq.queue)
 }

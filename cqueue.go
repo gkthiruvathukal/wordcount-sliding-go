@@ -14,7 +14,7 @@ type CQueueString struct {
 }
 
 func (cq *CQueueString) show() {
-        // replace with native logging
+	// replace with native logging
 	fmt.Printf("storePos = %d, retrievePos = %d, queue = ", cq.storePos, cq.retrievePos)
 	fmt.Println(cq.queue)
 }
