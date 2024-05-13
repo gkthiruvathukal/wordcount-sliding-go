@@ -1,10 +1,109 @@
 package main
 
+// George trying to figure out how to have basic unit tests & property tests in Go.
+
 import (
-	"testing"
+    "testing"
+    "testing/quick"
 )
 
-// newTestQueue creates a new instance of CircularQueue[int] with specified capacity.
+// Property Tests
+
+func TestEnqueueDequeueProperty(t *testing.T) {
+    property := func(a []int) bool {
+        q := NewCircularQueue[int](len(a) + 1) // Ensure there's enough space
+        for _, item := range a {
+            if err := q.Enqueue(item); err != nil {
+                return false // Should never fail to enqueue in this setup
+            }
+        }
+
+        for _, expected := range a {
+            if item, err := q.Dequeue(); err != nil || item != expected {
+                return false
+            }
+        }
+        return true
+    }
+
+    if err := quick.Check(property, nil); err != nil {
+        t.Error("Failed Enqueue/Dequeue property check:", err)
+    }
+}
+
+// Test the consistency of the Peek method.
+
+func TestPeekProperty(t *testing.T) {
+    property := func(a []int) bool {
+        if len(a) == 0 {
+            return true // Nothing to test if no elements
+        }
+        q := NewCircularQueue[int](len(a))
+        for _, item := range a {
+            if err := q.Enqueue(item); err != nil {
+                return false // Stop if full (though setup should prevent this)
+            }
+        }
+        expected, _ := q.Peek() // Ignore error for non-empty queue
+        item, _ := q.Dequeue()  // Ignore error for non-empty queue
+        return expected == item
+    }
+
+    if err := quick.Check(property, nil); err != nil {
+        t.Error("Failed Peek property check:", err)
+    }
+}
+
+// Test the size property of the queue.
+func TestSizeProperty(t *testing.T) {
+    property := func(a []int) bool {
+        q := NewCircularQueue[int](len(a) * 2) // Make sure we don't run out of space
+        count := 0
+        for _, item := range a {
+            if q.Enqueue(item) == nil {
+                count++
+            }
+        }
+        return q.Size() == count
+    }
+
+    if err := quick.Check(property, nil); err != nil {
+        t.Error("Failed Size property check:", err)
+    }
+}
+
+// Test that the IsFull and IsEmpty methods report correctly.
+func TestFullEmptyProperty(t *testing.T) {
+    property := func(a []int) bool {
+        capacity := len(a)
+        if capacity == 0 {
+            return true // Trivially true for empty input
+        }
+        q := NewCircularQueue[int](capacity)
+        for i := 0; i < capacity; i++ {
+            if q.Enqueue(a[i]) != nil {
+                return false // Should not fail to enqueue up to capacity
+            }
+        }
+        if !q.IsFull() {
+            return false
+        }
+        for i := 0; i < capacity; i++ {
+            if _, err := q.Dequeue(); err != nil {
+                return false // Should not fail to dequeue when items are present
+            }
+        }
+        return q.IsEmpty()
+    }
+
+    if err := quick.Check(property, nil); err != nil {
+        t.Error("Failed Full/Empty property check:", err)
+    }
+}
+
+
+// These are unit tests (not property tests)
+
 func newTestQueue(capacity int) *CircularQueue[int] {
 	q := NewCircularQueue[int](capacity)
 	return q
