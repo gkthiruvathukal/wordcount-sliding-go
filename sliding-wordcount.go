@@ -97,14 +97,18 @@ func driver(config *WordCountConfig) {
 	}
 }
 
-func main() {
-
-        config := WordCountConfig{lastNWords: 1000, showTop: 10, minWordLength: 5, everySteps: 1000, ignoreCase: false}
+func parseCommandLine() WordCountConfig {
+	config :=  WordCountConfig{lastNWords: 1000, showTop: 10, minWordLength: 5, everySteps: 1000, ignoreCase: false}
 	flag.IntVar(&config.lastNWords, "last-n-words", config.lastNWords, "last n words from current word (to count in word cloud)")
 	flag.IntVar(&config.showTop, "show-top", config.showTop, "show top n words")
 	flag.IntVar(&config.minWordLength, "min-word-length", config.minWordLength, "minimum word length")
 	flag.IntVar(&config.everySteps, "every-steps", config.everySteps, "minimum word length")
 	flag.BoolVar(&config.ignoreCase, "ignore-case", config.ignoreCase, "treat all words as upper case")
 	flag.Parse()
+	return config
+}
+
+func main() {
+	config := parseCommandLine()
 	driver(&config)
 }
