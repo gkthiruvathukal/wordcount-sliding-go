@@ -13,7 +13,7 @@ import (
 // WordCountConfig is used for CLI arguments
 type WordCountConfig struct {
 	lastNWords, showTop, minWordLength, everySteps int
-	ignoreCase                                     bool
+	ignoreCase, idiomatic                          bool
 }
 
 // WC is used for sorting at presentation layer (top N words in word cloud)
@@ -65,7 +65,10 @@ func wordDown(wordCloud map[string]int, dropWord string) {
 	}
 }
 
-func driver(config *WordCountConfig) {
+// The imperative pipline is a more traditional way of writing the solution
+// It is monolithic, but the code is still fairly intuitive.
+
+func imperativePipeline(config *WordCountConfig) {
 	regex := regexp.MustCompile(`\p{L}+`)
 	scanner := bufio.NewScanner(os.Stdin)
 	queue := NewCircularQueue[string](config.lastNWords)
@@ -97,18 +100,96 @@ func driver(config *WordCountConfig) {
 	}
 }
 
-func parseCommandLine() WordCountConfig {
-	config :=  WordCountConfig{lastNWords: 1000, showTop: 10, minWordLength: 5, everySteps: 1000, ignoreCase: false}
+// The "idiomatic" pipeline uses go routines and channels to suggest a more functional style, similar to Scala and others.
+// Note that Go does not support most of FP and nevertheless provides a delightfully composable approach.
+
+func goIdiomaticPipeline(config *WordCountConfig) {
+	words := generateWords(config)
+	filteredWords := filterBasedOnCommandLine(config, words)
+	slidingAnalysis(config, filteredWords)
+}
+
+func generateWords(config *WordCountConfig) <-chan string {
+	regex := regexp.MustCompile(`\p{L}+`)
+	scanner := bufio.NewScanner(os.Stdin)
+
+	out := make(chan string)
+	go func() {
+		for scanner.Scan() {
+			text := scanner.Text()
+			matches := regex.FindAllString(text, -1)
+			for _, word := range matches {
+				out <- word
+			}
+		}
+		close(out)
+	}()
+	return out
+}
+
+func filterBasedOnCommandLine(config *WordCountConfig, in <-chan string) <-chan string {
+	out := make(chan string)
+	go func() {
+		for word := range in {
+			newWord := word
+			if len([]rune(word)) < config.minWordLength {
+				continue
+			}
+			if config.ignoreCase {
+				newWord = strings.ToLower(newWord)
+			}
+			out <- newWord
+		}
+		close(out)
+	}()
+	return out
+}
+
+// last stage of pipeline
+
+func slidingAnalysis(config *WordCountConfig, in <-chan string) {
+	queue := NewCircularQueue[string](config.lastNWords)
+	wc := make(map[string]int)
+	wordPosition := 0
+	for word := range in {
+		wordUp(wc, word)
+		if queue.IsFull() {
+			droppedWord, _ := queue.Dequeue()
+			wordDown(wc, droppedWord)
+		}
+		wordPosition++
+		queue.Enqueue(word)
+		if wordPosition%config.everySteps == 0 {
+			fmt.Printf("%d: ", wordPosition)
+			showWordCounts(wc, config.showTop)
+		}
+	}
+}
+
+// We will have one main that can select the versionw with or without go-routines.
+func parseCommandLine() *WordCountConfig {
+	config := WordCountConfig{lastNWords: 1000, showTop: 10, minWordLength: 5, everySteps: 1000, ignoreCase: false, idiomatic: false}
 	flag.IntVar(&config.lastNWords, "last-n-words", config.lastNWords, "last n words from current word (to count in word cloud)")
 	flag.IntVar(&config.showTop, "show-top", config.showTop, "show top n words")
 	flag.IntVar(&config.minWordLength, "min-word-length", config.minWordLength, "minimum word length")
 	flag.IntVar(&config.everySteps, "every-steps", config.everySteps, "minimum word length")
 	flag.BoolVar(&config.ignoreCase, "ignore-case", config.ignoreCase, "treat all words as upper case")
+	flag.BoolVar(&config.idiomatic, "idiomatic", config.ignoreCase, "use Go routines to emulate a functional-style pipeline")
 	flag.Parse()
-	return config
+	return &config
+}
+
+func driver(config *WordCountConfig) {
+	if config.idiomatic {
+		fmt.Println("Running driver with idiomatic")
+		goIdiomaticPipeline(config)
+	} else {
+		fmt.Println("Running driver with imperative")
+		imperativePipeline(config)
+	}
 }
 
 func main() {
 	config := parseCommandLine()
-	driver(&config)
+	driver(config)
 }
