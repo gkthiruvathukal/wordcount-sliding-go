@@ -115,7 +115,7 @@ func generateWords(config *WordCountConfig) <-chan string {
 	scanner := bufio.NewScanner(os.Stdin)
 
 	out := make(chan string, config.channelSize)
-	go func() {
+	generator := func() {
 		for scanner.Scan() {
 			text := scanner.Text()
 			matches := regex.FindAllString(text, -1)
@@ -124,13 +124,14 @@ func generateWords(config *WordCountConfig) <-chan string {
 			}
 		}
 		close(out)
-	}()
+	}
+	go generator()
 	return out
 }
 
 func filterBasedOnCommandLine(config *WordCountConfig, in <-chan string) <-chan string {
 	out := make(chan string, config.channelSize)
-	go func() {
+	filter := func() {
 		for word := range in {
 			newWord := word
 			if len([]rune(word)) < config.minWordLength {
@@ -142,7 +143,8 @@ func filterBasedOnCommandLine(config *WordCountConfig, in <-chan string) <-chan 
 			out <- newWord
 		}
 		close(out)
-	}()
+	}
+	go filter()
 	return out
 }
 
