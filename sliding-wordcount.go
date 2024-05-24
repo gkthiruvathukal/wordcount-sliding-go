@@ -13,7 +13,8 @@ import (
 // WordCountConfig is used for CLI arguments
 type WordCountConfig struct {
 	lastNWords, showTop, minWordLength, everySteps int
-	ignoreCase, idiomatic                          bool
+	ignoreCase, goroutines                         bool
+	channelSize                                    int
 }
 
 // WC is used for sorting at presentation layer (top N words in word cloud)
@@ -103,7 +104,7 @@ func imperativePipeline(config *WordCountConfig) {
 // The "idiomatic" pipeline uses go routines and channels to suggest a more functional style, similar to Scala and others.
 // Note that Go does not support most of FP and nevertheless provides a delightfully composable approach.
 
-func goIdiomaticPipeline(config *WordCountConfig) {
+func goRoutinesPipeline(config *WordCountConfig) {
 	words := generateWords(config)
 	filteredWords := filterBasedOnCommandLine(config, words)
 	slidingAnalysis(config, filteredWords)
@@ -113,7 +114,7 @@ func generateWords(config *WordCountConfig) <-chan string {
 	regex := regexp.MustCompile(`\p{L}+`)
 	scanner := bufio.NewScanner(os.Stdin)
 
-	out := make(chan string)
+	out := make(chan string, config.channelSize)
 	go func() {
 		for scanner.Scan() {
 			text := scanner.Text()
@@ -128,7 +129,7 @@ func generateWords(config *WordCountConfig) <-chan string {
 }
 
 func filterBasedOnCommandLine(config *WordCountConfig, in <-chan string) <-chan string {
-	out := make(chan string)
+	out := make(chan string, config.channelSize)
 	go func() {
 		for word := range in {
 			newWord := word
@@ -168,23 +169,24 @@ func slidingAnalysis(config *WordCountConfig, in <-chan string) {
 
 // We will have one main that can select the versionw with or without go-routines.
 func parseCommandLine() *WordCountConfig {
-	config := WordCountConfig{lastNWords: 1000, showTop: 10, minWordLength: 5, everySteps: 1000, ignoreCase: false, idiomatic: false}
+	config := WordCountConfig{lastNWords: 1000, showTop: 10, minWordLength: 5, everySteps: 1000, ignoreCase: false, goroutines: false, channelSize: 10}
 	flag.IntVar(&config.lastNWords, "last-n-words", config.lastNWords, "last n words from current word (to count in word cloud)")
 	flag.IntVar(&config.showTop, "show-top", config.showTop, "show top n words")
 	flag.IntVar(&config.minWordLength, "min-word-length", config.minWordLength, "minimum word length")
 	flag.IntVar(&config.everySteps, "every-steps", config.everySteps, "minimum word length")
 	flag.BoolVar(&config.ignoreCase, "ignore-case", config.ignoreCase, "treat all words as upper case")
-	flag.BoolVar(&config.idiomatic, "idiomatic", config.ignoreCase, "use Go routines to emulate a functional-style pipeline")
+	flag.BoolVar(&config.goroutines, "channels", config.ignoreCase, "use Go routines/channels to emulate a functional-style pipeline")
+	flag.IntVar(&config.channelSize, "channel-size", config.channelSize, "channel size (for go routines)")
 	flag.Parse()
 	return &config
 }
 
 func driver(config *WordCountConfig) {
-	if config.idiomatic {
-		fmt.Println("Running driver with idiomatic")
-		goIdiomaticPipeline(config)
+	if config.goroutines {
+		fmt.Println("Go routines + channels solution")
+		goRoutinesPipeline(config)
 	} else {
-		fmt.Println("Running driver with imperative")
+		fmt.Println("Imperative/traditional solution")
 		imperativePipeline(config)
 	}
 }
