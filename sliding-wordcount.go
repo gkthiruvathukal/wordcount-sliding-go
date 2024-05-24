@@ -13,7 +13,7 @@ import (
 // WordCountConfig is used for CLI arguments
 type WordCountConfig struct {
 	lastNWords, showTop, minWordLength, everySteps int
-	ignoreCase, goroutines                         bool
+	ignoreCase, goRoutines                         bool
 	channelSize                                    int
 }
 
@@ -171,20 +171,20 @@ func slidingAnalysis(config *WordCountConfig, in <-chan string) {
 
 // We will have one main that can select the versionw with or without go-routines.
 func parseCommandLine() *WordCountConfig {
-	config := WordCountConfig{lastNWords: 1000, showTop: 10, minWordLength: 5, everySteps: 1000, ignoreCase: false, goroutines: false, channelSize: 10}
+	config := WordCountConfig{lastNWords: 1000, showTop: 10, minWordLength: 5, everySteps: 1000, ignoreCase: false, goRoutines: false, channelSize: 10}
 	flag.IntVar(&config.lastNWords, "last-n-words", config.lastNWords, "last n words from current word (to count in word cloud)")
 	flag.IntVar(&config.showTop, "show-top", config.showTop, "show top n words")
 	flag.IntVar(&config.minWordLength, "min-word-length", config.minWordLength, "minimum word length")
 	flag.IntVar(&config.everySteps, "every-steps", config.everySteps, "minimum word length")
 	flag.BoolVar(&config.ignoreCase, "ignore-case", config.ignoreCase, "treat all words as upper case")
-	flag.BoolVar(&config.goroutines, "channels", config.ignoreCase, "use Go routines/channels to emulate a functional-style pipeline")
+	flag.BoolVar(&config.goRoutines, "go-routines", config.goRoutines, "use Go routines/channels to emulate a functional-style pipeline")
 	flag.IntVar(&config.channelSize, "channel-size", config.channelSize, "channel size (for go routines)")
 	flag.Parse()
 	return &config
 }
 
 func driver(config *WordCountConfig) {
-	if config.goroutines {
+	if config.goRoutines {
 		fmt.Println("Go routines + channels solution")
 		goRoutinesPipeline(config)
 	} else {
