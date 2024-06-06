@@ -1,4 +1,4 @@
-package main
+package cq
 
 // George trying to figure out how to have basic unit tests & property tests in Go.
 

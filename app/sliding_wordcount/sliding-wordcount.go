@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"cq"
 )
 
 // WordCountConfig is used for CLI arguments
@@ -72,7 +73,7 @@ func wordDown(wordCloud map[string]int, dropWord string) {
 func imperativePipeline(config *WordCountConfig) {
 	regex := regexp.MustCompile(`\p{L}+`)
 	scanner := bufio.NewScanner(os.Stdin)
-	queue := NewCircularQueue[string](config.lastNWords)
+	queue := cq.NewCircularQueue[string](config.lastNWords)
 	//#queue.init(config.lastNWords)
 	wc := make(map[string]int)
 	wordPosition := 0
@@ -151,7 +152,7 @@ func filterBasedOnCommandLine(config *WordCountConfig, in <-chan string) <-chan 
 // last stage of pipeline
 
 func slidingAnalysis(config *WordCountConfig, in <-chan string) {
-	queue := NewCircularQueue[string](config.lastNWords)
+	queue := cq.NewCircularQueue[string](config.lastNWords)
 	wc := make(map[string]int)
 	wordPosition := 0
 	for word := range in {

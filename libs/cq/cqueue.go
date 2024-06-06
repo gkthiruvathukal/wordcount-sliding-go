@@ -1,7 +1,7 @@
 // This version is no longer used.
 // However, it was the basis for the generics version, so it is retained for posterity!
 
-package main
+package cq
 
 import "fmt"
 
