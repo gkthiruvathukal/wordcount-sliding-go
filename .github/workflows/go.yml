@@ -27,4 +27,9 @@ jobs:
            popd
         done
     - name: Test Libraries
-      run: echo "Coming soon"
+      run: |
+        for lib in libs/*; do
+           pushd $lib
+           go test -v
+           popd
+        done
