@@ -19,9 +19,9 @@ jobs:
         go-version: 1.22
 
     - name: Build Apps
-       run: |
-         for app in app/*; do
-            APP=$(basename $app) go run $app/$APP.go -h
-         done
+      run: |
+        for app in app/*; do
+           APP=$(basename $app) go run $app/$APP.go -h
+        done
     - name: Test Libraries
       run: echo "Coming soon"
