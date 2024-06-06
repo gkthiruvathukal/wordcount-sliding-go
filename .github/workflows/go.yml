@@ -19,6 +19,7 @@ jobs:
         go-version: 1.22
 
     - name: Build and Test Apps
-      run: ./do-app.sh
+      run: ./do-app.sh && ./do-hamlet.sh
+
     - name: Test Libraries
       run: ./do-libs.sh
