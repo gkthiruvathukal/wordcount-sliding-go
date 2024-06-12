@@ -7,7 +7,8 @@ fi
 
 if [ -f "build/sliding_wordcount" ]; then
    echo "Sequential"
-   time cat data/hamlet-10-copies.txt | ./build/sliding_wordcount > /dev/null
+   time cat data/hamlet-10-copies.txt | ./build/sliding_wordcount
+
    echo "Functional Style / Channels / Varying buffer size"
    for BUFFER_SIZE in 10 100 1000 10000 100000 1000000; do
       echo "buffer size", $BUFFER_SIZE
