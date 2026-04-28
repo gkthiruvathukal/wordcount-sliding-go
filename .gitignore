@@ -15,5 +15,8 @@
 
 .idea/
 
-# Build 
+# Build
 build/
+
+# Benchmark output
+*.txt

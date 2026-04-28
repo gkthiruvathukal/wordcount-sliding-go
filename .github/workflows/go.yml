@@ -7,22 +7,36 @@ on:
     branches: [ master ]
 
 jobs:
-
   build:
     runs-on: ubuntu-latest
+
     steps:
-    - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
-    - name: Set up Go
-      uses: actions/setup-go@v2
-      with:
-        go-version: 1.22
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache: true
 
-    - name: Build and Test Apps
-      run: ./do-app.sh
+      - name: Vet
+        run: |
+          cd libs/cq && go vet ./...
+          cd app/sliding_wordcount && go vet ./...
 
-    - name: Test Libraries
-      run: ./do-libs.sh
+      - name: Test libraries
+        run: cd libs/cq && go test -v ./...
 
-    - name: Acceptance Test [with some real data]
-      run: ./do-hamlet.sh
+      - name: Build app
+        run: cd app/sliding_wordcount && go build ./...
+
+      - name: Test app
+        run: cd app/sliding_wordcount && go test -v ./...
+
+      - name: Acceptance test
+        run: |
+          go build -o build/sliding_wordcount ./app/sliding_wordcount/sliding_wordcount.go
+          cat data/hamlet-10-copies.txt | ./build/sliding_wordcount > /dev/null
+          cat data/hamlet-10-copies.txt | ./build/sliding_wordcount -channel > /dev/null
+          cat data/hamlet-10-copies.txt | ./build/sliding_wordcount -go-routines > /dev/null
+          cat data/hamlet-10-copies.txt | ./build/sliding_wordcount -go-routines -channel > /dev/null

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"regexp"
 	"sort"
@@ -11,29 +12,19 @@ import (
 	"cq"
 )
 
-// WordCountConfig is used for CLI arguments
 type WordCountConfig struct {
 	lastNWords, showTop, minWordLength, everySteps int
 	ignoreCase, goRoutines                         bool
 	channelSize                                    int
+	circularQueue, channelQueue                    bool
 }
 
-// WC is used for sorting at presentation layer (top N words in word cloud)
 type WC struct {
 	word  string
 	count int
 }
 
-//func min(a, b comparable) int {
-//	if a < b {
-//		return a
-//	}
-//	return b
-//}
-
 func showWordCounts(wc map[string]int, showTop int) {
-
-	// wcData is a slice of (word, count) pairs (as struct WC)
 	wcData := make([]WC, len(wc))
 	i := 0
 	for word, count := range wc {
@@ -41,12 +32,10 @@ func showWordCounts(wc map[string]int, showTop int) {
 		i++
 	}
 
-	// sort.Slice() sorts by count field, descending
 	sort.Slice(wcData, func(i, j int) bool {
 		return wcData[i].count > wcData[j].count
 	})
 
-	// create slice of strings for presentation as JSON like output
 	numberToPrint := min(len(wcData), showTop)
 	pretty := make([]string, numberToPrint)
 
@@ -67,21 +56,16 @@ func wordDown(wordCloud map[string]int, dropWord string) {
 	}
 }
 
-// The imperative pipline is a more traditional way of writing the solution
-// It is monolithic, but the code is still fairly intuitive.
-
-func imperativePipeline(config *WordCountConfig) {
+func imperativePipelineCQ(config *WordCountConfig) {
 	regex := regexp.MustCompile(`\p{L}+`)
 	scanner := bufio.NewScanner(os.Stdin)
 	queue := cq.NewCircularQueue[string](config.lastNWords)
-	//#queue.init(config.lastNWords)
 	wc := make(map[string]int)
 	wordPosition := 0
 	for scanner.Scan() {
 		text := scanner.Text()
 		matches := regex.FindAllString(text, -1)
 		for _, word := range matches {
-			// ignore words below the minimum length altogether
 			if len([]rune(word)) >= config.minWordLength {
 				if config.ignoreCase {
 					word = strings.ToLower(word)
@@ -102,56 +86,7 @@ func imperativePipeline(config *WordCountConfig) {
 	}
 }
 
-// The "idiomatic" pipeline uses go routines and channels to suggest a more functional style, similar to Scala and others.
-// Note that Go does not support most of FP and nevertheless provides a delightfully composable approach.
-
-func goRoutinesPipeline(config *WordCountConfig) {
-	words := generateWords(config)
-	filteredWords := filterBasedOnCommandLine(config, words)
-	slidingAnalysis(config, filteredWords)
-}
-
-func generateWords(config *WordCountConfig) <-chan string {
-	regex := regexp.MustCompile(`\p{L}+`)
-	scanner := bufio.NewScanner(os.Stdin)
-
-	out := make(chan string, config.channelSize)
-	generator := func() {
-		for scanner.Scan() {
-			text := scanner.Text()
-			matches := regex.FindAllString(text, -1)
-			for _, word := range matches {
-				out <- word
-			}
-		}
-		close(out)
-	}
-	go generator()
-	return out
-}
-
-func filterBasedOnCommandLine(config *WordCountConfig, in <-chan string) <-chan string {
-	out := make(chan string, config.channelSize)
-	filter := func() {
-		for word := range in {
-			newWord := word
-			if len([]rune(word)) < config.minWordLength {
-				continue
-			}
-			if config.ignoreCase {
-				newWord = strings.ToLower(newWord)
-			}
-			out <- newWord
-		}
-		close(out)
-	}
-	go filter()
-	return out
-}
-
-// last stage of pipeline
-
-func slidingAnalysis(config *WordCountConfig, in <-chan string) {
+func slidingAnalysisCQ(config *WordCountConfig, in <-chan string) {
 	queue := cq.NewCircularQueue[string](config.lastNWords)
 	wc := make(map[string]int)
 	wordPosition := 0
@@ -170,28 +105,141 @@ func slidingAnalysis(config *WordCountConfig, in <-chan string) {
 	}
 }
 
-// We will have one main that can select the versionw with or without go-routines.
-func parseCommandLine() *WordCountConfig {
-	config := WordCountConfig{lastNWords: 1000, showTop: 10, minWordLength: 5, everySteps: 1000, ignoreCase: false, goRoutines: false, channelSize: 10}
-	flag.IntVar(&config.lastNWords, "last-n-words", config.lastNWords, "last n words from current word (to count in word cloud)")
-	flag.IntVar(&config.showTop, "show-top", config.showTop, "show top n words")
-	flag.IntVar(&config.minWordLength, "min-word-length", config.minWordLength, "minimum word length")
-	flag.IntVar(&config.everySteps, "every-steps", config.everySteps, "minimum word length")
-	flag.BoolVar(&config.ignoreCase, "ignore-case", config.ignoreCase, "treat all words as upper case")
-	flag.BoolVar(&config.goRoutines, "go-routines", config.goRoutines, "use Go routines/channels to emulate a functional-style pipeline")
-	flag.IntVar(&config.channelSize, "channel-size", config.channelSize, "channel size (for go routines)")
-	flag.Parse()
-	return &config
+func imperativePipelineChannel(config *WordCountConfig) {
+	regex := regexp.MustCompile(`\p{L}+`)
+	scanner := bufio.NewScanner(os.Stdin)
+	window := make(chan string, config.lastNWords)
+	wc := make(map[string]int)
+	wordPosition := 0
+	for scanner.Scan() {
+		text := scanner.Text()
+		matches := regex.FindAllString(text, -1)
+		for _, word := range matches {
+			if len([]rune(word)) >= config.minWordLength {
+				if config.ignoreCase {
+					word = strings.ToLower(word)
+				}
+				wordUp(wc, word)
+				if len(window) == cap(window) {
+					droppedWord := <-window
+					wordDown(wc, droppedWord)
+				}
+				wordPosition++
+				window <- word
+				if wordPosition%config.everySteps == 0 {
+					fmt.Printf("%d: ", wordPosition)
+					showWordCounts(wc, config.showTop)
+				}
+			}
+		}
+	}
+}
+
+func slidingAnalysisChannel(config *WordCountConfig, in <-chan string) {
+	window := make(chan string, config.lastNWords)
+	wc := make(map[string]int)
+	wordPosition := 0
+	for word := range in {
+		wordUp(wc, word)
+		if len(window) == cap(window) {
+			droppedWord := <-window
+			wordDown(wc, droppedWord)
+		}
+		wordPosition++
+		window <- word
+		if wordPosition%config.everySteps == 0 {
+			fmt.Printf("%d: ", wordPosition)
+			showWordCounts(wc, config.showTop)
+		}
+	}
+}
+
+func generateWords(config *WordCountConfig) <-chan string {
+	regex := regexp.MustCompile(`\p{L}+`)
+	scanner := bufio.NewScanner(os.Stdin)
+
+	out := make(chan string, config.channelSize)
+	go func() {
+		for scanner.Scan() {
+			text := scanner.Text()
+			matches := regex.FindAllString(text, -1)
+			for _, word := range matches {
+				out <- word
+			}
+		}
+		close(out)
+	}()
+	return out
+}
+
+func filterBasedOnCommandLine(config *WordCountConfig, in <-chan string) <-chan string {
+	out := make(chan string, config.channelSize)
+	go func() {
+		for word := range in {
+			if len([]rune(word)) < config.minWordLength {
+				continue
+			}
+			if config.ignoreCase {
+				word = strings.ToLower(word)
+			}
+			out <- word
+		}
+		close(out)
+	}()
+	return out
 }
 
 func driver(config *WordCountConfig) {
-	if config.goRoutines {
-		fmt.Println("Go routines + channels solution")
-		goRoutinesPipeline(config)
-	} else {
-		fmt.Println("Imperative/traditional solution")
-		imperativePipeline(config)
+	switch {
+	case !config.goRoutines && config.circularQueue:
+		fmt.Println("Imperative + circular queue")
+		imperativePipelineCQ(config)
+	case !config.goRoutines && config.channelQueue:
+		fmt.Println("Imperative + channel window")
+		imperativePipelineChannel(config)
+	case config.goRoutines && config.circularQueue:
+		fmt.Println("Goroutine pipeline + circular queue")
+		words := generateWords(config)
+		filtered := filterBasedOnCommandLine(config, words)
+		slidingAnalysisCQ(config, filtered)
+	case config.goRoutines && config.channelQueue:
+		fmt.Println("Goroutine pipeline + channel window")
+		words := generateWords(config)
+		filtered := filterBasedOnCommandLine(config, words)
+		slidingAnalysisChannel(config, filtered)
 	}
+}
+
+func parseCommandLine() *WordCountConfig {
+	config := WordCountConfig{
+		lastNWords:    1000,
+		showTop:       10,
+		minWordLength: 5,
+		everySteps:    1000,
+		ignoreCase:    false,
+		goRoutines:    false,
+		channelSize:   10,
+		circularQueue: false,
+		channelQueue:  false,
+	}
+	flag.IntVar(&config.lastNWords, "last-n-words", config.lastNWords, "last n words from current word (to count in word cloud)")
+	flag.IntVar(&config.showTop, "show-top", config.showTop, "show top n words")
+	flag.IntVar(&config.minWordLength, "min-word-length", config.minWordLength, "minimum word length")
+	flag.IntVar(&config.everySteps, "every-steps", config.everySteps, "print word cloud every N words")
+	flag.BoolVar(&config.ignoreCase, "ignore-case", config.ignoreCase, "treat all words as lower case")
+	flag.BoolVar(&config.goRoutines, "go-routines", config.goRoutines, "use goroutine/channel pipeline")
+	flag.IntVar(&config.channelSize, "channel-size", config.channelSize, "pipeline channel buffer size (goroutine mode)")
+	flag.BoolVar(&config.circularQueue, "circular-queue", config.circularQueue, "use circular queue for sliding window (default)")
+	flag.BoolVar(&config.channelQueue, "channel", config.channelQueue, "use buffered channel for sliding window")
+	flag.Parse()
+
+	if config.circularQueue && config.channelQueue {
+		log.Fatal("error: -circular-queue and -channel are mutually exclusive")
+	}
+	if !config.circularQueue && !config.channelQueue {
+		config.circularQueue = true
+	}
+	return &config
 }
 
 func main() {
