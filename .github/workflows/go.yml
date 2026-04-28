@@ -21,17 +21,17 @@ jobs:
 
       - name: Vet
         run: |
-          cd libs/cq && go vet ./...
-          cd app/sliding_wordcount && go vet ./...
+          (cd libs/cq && go vet ./...)
+          (cd app/sliding_wordcount && go vet ./...)
 
       - name: Test libraries
-        run: cd libs/cq && go test -v ./...
+        run: (cd libs/cq && go test -v ./...)
 
       - name: Build app
-        run: cd app/sliding_wordcount && go build ./...
+        run: (cd app/sliding_wordcount && go build ./...)
 
       - name: Test app
-        run: cd app/sliding_wordcount && go test -v ./...
+        run: (cd app/sliding_wordcount && go test -v ./...)
 
       - name: Acceptance test
         run: |
